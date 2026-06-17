@@ -1,0 +1,41 @@
+{
+  "name": "@uikode/tide-audio",
+  "version": "0.1.0",
+  "description": "Web Audio API sound presets for UI feedback. Zero dependencies, oscillator synthesis only.",
+  "type": "module",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "files": ["dist", "README.md", "LICENSE"],
+  "scripts": {
+    "build": "vite build && tsc --emitDeclarationOnly",
+    "test": "vitest run",
+    "dev": "vitest"
+  },
+  "devDependencies": {
+    "typescript": "^5.5.0",
+    "vite": "^6.0.0",
+    "vitest": "^3.0.0"
+  },
+  "keywords": [
+    "audio",
+    "web-audio-api",
+    "ui-sounds",
+    "oscillator",
+    "feedback",
+    "tide"
+  ],
+  "author": "Andy Vandaric <andy@uikode.com>",
+  "license": "MIT",
+  "homepage": "https://uikode.com/tide-audio",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/uikode/tide.git",
+    "directory": "packages/tide-audio"
+  }
+}
