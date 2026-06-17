@@ -148,3 +148,147 @@ describe("tide-audio index exports", () => {
     expect(typeof mod.initOnInteraction).toBe("function")
   })
 })
+
+// --- AudioContext mock tests for presets ---
+
+describe("tide-audio presets with AudioContext mock", () => {
+  let mockOsc: any
+  let mockGain: any
+  let mockCtx: any
+
+  beforeEach(() => {
+    unmute()
+    setVolume(0.5)
+
+    mockOsc = {
+      type: "",
+      frequency: {
+        setValueAtTime: vi.fn(),
+        linearRampToValueAtTime: vi.fn(),
+      },
+      connect: vi.fn(),
+      start: vi.fn(),
+      stop: vi.fn(),
+    }
+
+    mockGain = {
+      gain: {
+        setValueAtTime: vi.fn(),
+        exponentialRampToValueAtTime: vi.fn(),
+      },
+      connect: vi.fn(),
+    }
+
+    mockCtx = {
+      currentTime: 0,
+      createOscillator: vi.fn(() => mockOsc),
+      createGain: vi.fn(() => mockGain),
+      destination: {},
+      resume: vi.fn(() => Promise.resolve()),
+    }
+
+    // @ts-ignore - mocking AudioContext
+    globalThis.AudioContext = vi.fn(() => mockCtx)
+  })
+
+  afterEach(() => {
+    vi.restoreAllMocks()
+  })
+
+  test("playTick creates oscillator with sine wave at 1200Hz", async () => {
+    // Reset module to get fresh AudioContext
+    vi.resetModules()
+    const { playTick } = await import("../src/presets")
+    const { setVolume: sv, unmute: um } = await import("../src/volume")
+    um()
+    sv(0.5)
+
+    playTick()
+
+    expect(mockCtx.createOscillator).toHaveBeenCalled()
+    expect(mockCtx.createGain).toHaveBeenCalled()
+    expect(mockOsc.type).toBe("sine")
+    expect(mockOsc.frequency.setValueAtTime).toHaveBeenCalledWith(1200, 0)
+    expect(mockOsc.connect).toHaveBeenCalledWith(mockGain)
+    expect(mockGain.connect).toHaveBeenCalledWith(mockCtx.destination)
+    expect(mockOsc.start).toHaveBeenCalled()
+    expect(mockOsc.stop).toHaveBeenCalled()
+  })
+
+  test("playError creates oscillator with sawtooth wave at 200Hz with ramp", async () => {
+    vi.resetModules()
+    const { playError } = await import("../src/presets")
+    const { setVolume: sv, unmute: um } = await import("../src/volume")
+    um()
+    sv(0.5)
+
+    playError()
+
+    expect(mockOsc.type).toBe("sawtooth")
+    expect(mockOsc.frequency.setValueAtTime).toHaveBeenCalledWith(200, 0)
+    expect(mockOsc.frequency.linearRampToValueAtTime).toHaveBeenCalledWith(150, 0.15)
+  })
+
+  test("presets do not play when muted", async () => {
+    vi.resetModules()
+    const { playTick } = await import("../src/presets")
+    const { mute: m } = await import("../src/volume")
+    m()
+
+    playTick()
+
+    expect(mockCtx.createOscillator).not.toHaveBeenCalled()
+  })
+
+  test("presets do not play when volume is 0", async () => {
+    vi.resetModules()
+    const { playTick } = await import("../src/presets")
+    const { setVolume: sv, unmute: um } = await import("../src/volume")
+    um()
+    sv(0)
+
+    playTick()
+
+    expect(mockCtx.createOscillator).not.toHaveBeenCalled()
+  })
+
+  test("playNavigate uses sine at 800Hz with short duration", async () => {
+    vi.resetModules()
+    const { playNavigate } = await import("../src/presets")
+    const { setVolume: sv, unmute: um } = await import("../src/volume")
+    um()
+    sv(0.5)
+
+    playNavigate()
+
+    expect(mockOsc.type).toBe("sine")
+    expect(mockOsc.frequency.setValueAtTime).toHaveBeenCalledWith(800, 0)
+    expect(mockOsc.stop).toHaveBeenCalledWith(0.03)
+  })
+})
+
+describe("tide-audio context", () => {
+  test("getAudioContext creates singleton", async () => {
+    vi.resetModules()
+    const mockCtx = { resume: vi.fn(() => Promise.resolve()) }
+    // @ts-ignore
+    globalThis.AudioContext = vi.fn(() => mockCtx)
+
+    const { getAudioContext } = await import("../src/context")
+    const ctx1 = getAudioContext()
+    const ctx2 = getAudioContext()
+    expect(ctx1).toBe(ctx2)
+    expect(globalThis.AudioContext).toHaveBeenCalledTimes(1)
+  })
+
+  test("resumeAudio calls resume on context", async () => {
+    vi.resetModules()
+    const mockCtx = { resume: vi.fn(() => Promise.resolve()) }
+    // @ts-ignore
+    globalThis.AudioContext = vi.fn(() => mockCtx)
+
+    const { resumeAudio } = await import("../src/context")
+    await resumeAudio()
+    expect(mockCtx.resume).toHaveBeenCalled()
+  })
+})
